@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- ========================================
+       ページタイトル（ブラウザのタブに表示される）
+       ======================================== -->
+  <title>会場までの道案内 ｜ Angelo Court Tokyo</title>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Noto Sans JP', sans-serif; background: #faf8f5; color: #2a2a2a; line-height: 1.7; }
+
+    /* ヘッダー */
+    header {
+      background: linear-gradient(135deg, #2c3e50 0%, #3d5a73 100%);
+      color: white; text-align: center; padding: 40px 20px 36px;
+    }
+    header .subtitle { font-size: 13px; letter-spacing: 0.15em; opacity: 0.75; margin-bottom: 8px; text-transform: uppercase; }
+    header h1 { font-family: 'Noto Serif JP', serif; font-size: clamp(20px, 5vw, 32px); font-weight: 700; letter-spacing: 0.05em; margin-bottom: 6px; }
+    header .venue-name { font-family: 'Noto Serif JP', serif; font-size: 18px; margin-top: 6px; opacity: 0.9; }
+    header .note { font-size: 13px; opacity: 0.8; margin-top: 8px; }
+
+    /* タブバー */
+    .tab-bar {
+      display: flex; background: #1e2d3d; position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .tab-btn {
+      flex: 1; padding: 14px 8px; border: none; background: transparent;
+      color: rgba(255,255,255,0.6); font-family: 'Noto Sans JP', sans-serif;
+      font-size: 14px; font-weight: 700; cursor: pointer; letter-spacing: 0.05em;
+      transition: all 0.2s; border-bottom: 3px solid transparent;
+    }
+    .tab-btn.active { color: white; border-bottom: 3px solid #f0c040; }
+    .tab-btn:hover { color: white; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* コンテンツ共通 */
+    .container { max-width: 760px; margin: 0 auto; padding: 0 16px 60px; }
+    .route-label { text-align: center; margin: 32px 0 20px; font-size: 13px; letter-spacing: 0.1em; color: #888; }
+    .route-label span { background: #e8e2d9; padding: 4px 16px; border-radius: 20px; }
+
+    /* ヒントボックス */
+    .tip-box {
+      background: #fff8e8; border-left: 4px solid #f0c040; border-radius: 6px;
+      padding: 14px 16px; margin: 20px 0; font-size: 13px; line-height: 1.8; color: #5a4a10;
+    }
+    .tip-box strong { display: block; font-size: 14px; margin-bottom: 4px; }
+
+    /* ステップ */
+    .steps { display: flex; flex-direction: column; }
+    .step { display: grid; grid-template-columns: 52px 1fr; gap: 0 16px; position: relative; }
+    .step:not(:last-child) .step-left::after {
+      content: ''; position: absolute; top: 52px; left: 25px;
+      width: 2px; height: calc(100% - 4px); background: #c8bfb0;
+    }
+    .step-left { position: relative; display: flex; flex-direction: column; align-items: center; padding-top: 4px; }
+    .step-num {
+      width: 44px; height: 44px; border-radius: 50%; background: #2c3e50; color: white;
+      font-size: 16px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; z-index: 1; font-family: 'Noto Serif JP', serif;
+    }
+    .step-num.goal {
+      background: #b8860b; width: 48px; height: 48px; font-size: 18px;
+      box-shadow: 0 0 0 4px #f5e8c0;
+    }
+    .step-right { padding: 4px 0 32px; }
+    .step-title { font-size: 16px; font-weight: 700; color: #1a1a1a; margin-bottom: 4px; line-height: 1.4; }
+    .step-title.goal { color: #8b6914; font-family: 'Noto Serif JP', serif; font-size: 17px; }
+    .step-desc { font-size: 13.5px; color: #555; margin-bottom: 12px; line-height: 1.7; }
+
+    /* 写真 */
+    .step-img {
+      width: 100%; max-width: 480px; border-radius: 10px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.12); display: block;
+      object-fit: cover; aspect-ratio: 4/3;
+    }
+
+    /* 写真なし（削除したときの代替表示） */
+    .step-img-placeholder {
+      width: 100%; max-width: 480px; aspect-ratio: 4/3;
+      border-radius: 10px; background: #e8e4df;
+      display: flex; align-items: center; justify-content: center;
+      color: #aaa; font-size: 13px;
+    }
+
+    footer { text-align: center; font-size: 12px; color: #aaa; padding-bottom: 20px; }
+  </style>
+</head>
+<body>
+
+<!-- ========================================
+     ヘッダー部分
+     式場名・サブタイトルはここを編集
+     ======================================== -->
+<header>
+  <p class="subtitle">Access Guide</p>
+  <h1>🗺 会場までの道案内</h1>
+  <p class="venue-name">Angelo Court Tokyo（Utsunomiya Terrace 5F）</p>
+  <p class="note">下のタブでルートを切り替えてご覧ください</p>
+</header>
+
+<!-- タブ切り替えボタン -->
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('train', this)">
+    🚃 電車でお越しの方<br><span style="font-size:11px;font-weight:400;">JR宇都宮駅から</span>
+  </button>
+  <button class="tab-btn" onclick="switchTab('car', this)">
+    🚗 お車でお越しの方<br><span style="font-size:11px;font-weight:400;">NPCパーキングから</span>
+  </button>
+</div>
+
+
+<!-- ==================================================
+     【電車ルート】
+     ・各ステップの <h3> がタイトル
+     ・<p> が説明文
+     ・<img src="images/ファイル名.jpg"> が写真
+     ・ステップを丸ごと削除したい場合は
+       <!-- STEP START --> 〜 <!-- STEP END --> の間を消す
+     ================================================== -->
+<div id="tab-train" class="tab-content active">
+  <div class="container">
+
+    <div class="tip-box">
+      <strong>📍 ルート概要</strong>
+      JR宇都宮駅 改札出口 → 東口方面コンコースを直進 → 高架連絡橋を渡る → Utsunomiya Terrace 1F入口 → エレベーターで5F → Angelo Court Tokyo
+    </div>
+
+    <p class="route-label"><span>全20ステップ｜徒歩約5〜8分</span></p>
+
+    <div class="steps">
+
+      <!-- STEP START -->
+      <div class="step">
+        <div class="step-left"><div class="step-num">1</div></div>
+        <div class="step-right">
+          <h3 class="step-title">改札を出る</h3>
+          <p class="step-desc">新幹線・在来線の改札（緑の自動改札）を出ます。</p>
+          <img class="step-img" src="images/train_01_ticket_gate.jpg" alt="改札">
+        </div>
+      </div>
+      <!-- STEP END -->
+
+      <!-- STEP START -->
+      <div class="step">
+        <div class="step-left"><div class="step-num">2</div></div>
+        <div class="step-right">
+          <h3 class="step-title">東口方向へ進む</h3>
+          <p class="step-desc">改札を出たら頭上の案内板を確認。「東口 →」「ライトライン →」の方向へ直進します。</p>
+          <img class="step-img" src="images/train_02_east_exit_sign.jpg" alt="東口方向サイン">
+        </div>
+      </div>
+      <!-- STEP END -->
+
+      <!-- STEP START -->
+      <div class="step">
+        <div class="step-left"><div class="step-num">3</div></div>
+        <div class="step-right">
+          <h3 class="step-title">ライトライン方面のサインを確認</h3>
+          <p class="step-desc">「東口 → ライトライン・LRT」の黄色い案内板が見えます。右へ進みます。</p>
+          <img class="step-img" src="images/train_03_lightline_sign.jpg" alt="ライトラインサイン">
+        </div>
+      </div>
+      <!-- STEP END -->
+
+      <!-- STEP START -->
+      <div class="step">
+        <div class="step-left"><div class="step-num">4</div></div>
+        <div class="step-right">
+          <h3 class="step-title">Fruit Gathering の前を通過</h3>
+          <p class="step-desc">右手に「Fruit Gathering」の黒い看板が見えます。そのまま直進。</p>
+          <img class="step-img" src="images/train_04_fruit_gathering.jpg" alt="Fruit Gathering">
+        </div>
+      </div>
+      <!-- STEP END -->
+
+      <!-- STEP START -->
+      <div class="step">
+        <div class="step-left"><div class="step-num">5</div></div>
+        <div class="step-right">
+          <h3 class="step-title">Tully's Coffee の前を通過</h3>
+          <p class="step-desc">左手に「Tully's Coffee」が見えます。そのまま直進。</p>
+          <img class="step-img" src="images/train_05_tullys.jpg" alt="Tullys Coffee">
+        </div>
+      </div>
+      <!-- STEP END -->
+
+      <!-- STEP START -->
+      <div class="step">
+        <div class="step-left"><div class="step-num">6</div></div>
+        <div class="step-right">
+          <h3 class="step-title">コンコース突き当たり</h3>
+          <p class="step-desc">前方に明るい出口（東口方面）が見えてきます。そのまま直進。</p>
+          <img class="step-img" src="images/train_06_corridor_end.jpg" alt="コンコース突き当たり">
+        </div>
+      </div>
+      <!-- STEP END -->
+
+      <!-- STEP START -->
+      <div class="step">
+        <div class="step-left"><div class="step-num">7</div></div>
+        <div class="step-right">
+          <h3 class="step-title">東口方面・PASEO 付近</h3>
+          <p class="step-desc">「東口 ↑」のサイン付近。PASEOの前を通り、東口へ向かいます。</p>
+          <img class="step-img" src="images/train_07_paseo.jpg" alt="PASEO付近">
+        </div>
+      </div>
+      <!-- STEP END -->
+
+      <!-- STEP START -->
+      <div class="step">
+        <div class="step-left"><div class="step-num">8</div></div>
+        <div class="step-right">
+          <h3 class="step-title">東口の外へ出る</h3>
+          <p class="step-desc">東口の外に出ます。高架の連絡橋が正面に続いています。</p>
+          <img class="step-img" src="images/train_08_outside.jpg" alt="東口外">
+        </div>
+      </div>
+      <!-- STEP END -->
+
+      <!-- STEP START -->
+      <div class="step">
+        <div class="step-left"><div class="step-num">9</div></div>
+        <div class="step-right">
+          <h3 class="step-title">連絡橋の入口</h3>
+          <p class="step-desc">「ライトキューブ宇都宮 ↑」「ライトライン乗り場 →」の案内板が見えます。そのまま連絡橋を直進。</p>
+          <img class="step-img" src="images/train_09_bridge_entrance.jpg" alt="連絡橋入口">
+        </div>
+      </div>
+      <!-- STEP END -->
+
+      <!-- STEP START -->
+      <div class="step">
+        <div class="step-left"><div class="step-num">10</div></div>
+        <div class="step-right">
+          <h3 class="step-title">連絡橋を渡る</h3>
+          <p class="step-desc">高架の連絡橋を渡ります。前方に広場と「Utsunomiya Terrace」の建物が見えてきます。</p>
+          <img class="step-img" src="images/train_10_bridge_walking.jpg" alt="連絡橋">
+        </div>
+      </div>
+      <!-- STEP END -->
+
+      <!-- STEP START -->
+      <div class="step">
+        <div class="step-left"><div class="step-num">11</div></div>
+        <div class="step-right">
+          <h3 class="step-title">連絡橋を抜けて広場へ</h3>
+          <p class="step-desc">「ライトライン乗り場 →」のサインのある出口を通り、広場に出ます。</p>
+          <img class="step-img" src="images/train_11_plaza.jpg" alt="広場">
+        </div>
+      </div>
+      <!-- STEP END -->
+
+      <!-- STEP START -->
+      <div class="step">
+        <div class="step-left"><div class="step-num">12</div></div>
+        <div class="step-right">
+          <h3 class="step-title">Utsunomiya Terrace 外観</h3>
+          <p class="step-desc">正面に「Utsunomiya Terrace」の建物が見えます。入口へ向かいます。</p>
+          <img class="step-img" src="images/train_12_terrace_exterior.jpg" alt="Utsunomiya Terrace外観">
+        </div>
+      </div>
+      <!-- STEP END -->
+
+      <!-- STEP START -->
+      <div class="step">
+        <div class="step-left"><div class="step-num">13</div></div>
+        <div class="step-right">
+          <h3 class="step-title">Utsunomiya Terrace 入口から入る</h3>
+          <p class="step-desc">「Utsunomiya Terrace」の入口（1F）を入ります。</p>
+          <img class="step-img" src="images/train_13_terrace_entrance.jpg" alt="テラス入口">
+        </div>
+      </div>
+      <!-- STEP END -->
+
+      <!-- STEP START -->
+      <div class="step">
+        <div class="step-left"><div class="step-num">14</div></div>
+        <div class="step-right">
+          <h3 class="step-title">1F に入ると PRONTO が見える</h3>
+          <p class="step-desc">1Fフロアに入ります。右手に「PRONTO」が見えます。そのまま奥へ進みます。</p>
+          <img class="step-img" src="images/train_14_pronto_1f.jpg" alt="PRONTO">
+        </div>
+      </div>
+      <!-- STEP END -->
+
+      <!-- STEP START -->
+      <div class="step">
+        <div class="step-left"><div class="step-num">15</div></div>
+        <div class="step-right">
+          <h3 class="step-title">レストラン街を直進</h3>
+          <p class="step-desc">飲食店が並ぶ通路を進みます。左手に「Pronto」、右手に赤い提灯のお店が見えます。</p>
+          <img class="step-img" src="images/train_15_restaurant_street.jpg" alt="レストラン街">
+        </div>
+      </div>
+      <!-- STEP END -->
+
+      <!-- STEP START -->
+      <div class="step">
+        <div class="step-left"><div class="step-num">16</div></div>
+        <div class="step-right">
+          <h3 class="step-title">2F エレベーターホールへ</h3>
+          <p class="step-desc">奥のエレベーターホールへ進みます。</p>
+          <img class="step-img" src="images/train_16_elevator_hall.jpg" alt="エレベーターホール">
+        </div>
+      </div>
+      <!-- STEP END -->
+
+      <!-- STEP START -->
+      <div class="step">
+        <div class="step-left"><div class="step-num">17</div></div>
+        <div class="step-right">
+          <h3 class="step-title">2F エレベーターに乗る</h3>
+          <p class="step-desc">2Fのエレベーターホール。エレベーターで <strong>5F</strong> を押します。</p>
+          <img class="step-img" src="images/train_17_elevator_2f.jpg" alt="2Fエレベーター">
+        </div>
+      </div>
+      <!-- STEP END -->
+
+      <!-- STEP START -->
+      <div class="step">
+        <div class="step-left"><div class="step-num">18</div></div>
+        <div class="step-right">
+          <h3 class="step-title">5F「レストラン＆ウェディング」で降りる</h3>
+          <p class="step-desc">エレベーター内の案内で5F「レストラン＆ウェディング」が点灯。5Fで降ります。</p>
+          <img class="step-img" src="images/train_18_elevator_inside.jpg" alt="エレベーター内">
+        </div>
+      </div>
+      <!-- STEP END -->
+
+      <!-- STEP START -->
+      <div class="step">
+        <div class="step-left"><div class="step-num">19</div></div>
+        <div class="step-right">
+          <h3 class="step-title">5F 廊下を進む</h3>
+          <p class="step-desc">エレベーターを降りたら廊下を進みます。「Angelo Court Tokyo」の入口が見えます。</p>
+          <img class="step-img" src="images/train_19_corridor_5f.jpg" alt="5F廊下">
+        </div>
+      </div>
+      <!-- STEP END -->
+
+      <!-- STEP START（最後のステップ：色が変わります） -->
+      <div class="step">
+        <div class="step-left"><div class="step-num goal">🎉</div></div>
+        <div class="step-right">
+          <h3 class="step-title goal">Angelo Court Tokyo に到着！</h3>
+          <p class="step-desc">「Angelo Court Tokyo」の看板が目印。こちらが式場入口です。</p>
+          <img class="step-img" src="images/train_20_angelo_arrival.jpg" alt="Angelo Court Tokyo">
+        </div>
+      </div>
+      <!-- STEP END -->
+
+    </div><!-- /steps -->
+  </div><!-- /container -->
+</div><!-- /tab-train -->
+
+
+<!-- ==================================================
+     【車ルート】
+     編集方法は電車ルートと同じです
+     ================================================== -->
+<div id="tab-car" class="tab-content">
+  <div class="container">
+
+    <div class="tip-box">
+      <strong>🅿 駐車場のご案内</strong>
+      Utsunomiya Terrace 隣接の「NPCパーキング」をご利用ください。<br>
+      P3F〜P4Fに駐車 → 連絡スロープで2Fへ → テラス内を進みエレベーターで5Fへ
+    </div>
+
+    <p class="route-label"><span>全15ステップ</span></p>
+
+    <div class="steps">
+
+      <!-- STEP START -->
+      <div class="step">
+        <div class="step-left"><div class="step-num">1</div></div>
+        <div class="step-right">
+          <h3 class="step-title">NPCパーキングに入庫</h3>
+          <p class="step-desc">「NPC」の看板が目印の立体駐車場（Utsunomiya Terrace 隣接）に入庫します。</p>
+          <img class="step-img" src="images/car_01_parking_entrance.jpg" alt="NPCパーキング入口">
+        </div>
+      </div>
+      <!-- STEP END -->
+
+      <!-- STEP START -->
+      <div class="step">
+        <div class="step-left"><div class="step-num">2</div></div>
+        <div class="step-right">
+          <h3 class="step-title">P3F の「Utsunomiya Terrace 2F →」サインを目印に</h3>
+          <p class="step-desc">P3F（駐車場3階）に「← Utsunomiya Terrace 2F」のサインがあります。このサインに従います。</p>
+          <img class="step-img" src="images/car_02_p3f_sign.jpg" alt="P3Fサイン">
+        </div>
+      </div>
+      <!-- STEP END -->
+
+      <!-- STEP START -->
+      <div class="step">
+        <div class="step-left"><div class="step-num">3</div></div>
+        <div class="step-right">
+          <h3 class="step-title">精算機・エレベーターのある通路へ</h3>
+          <p class="step-desc">駐車場内の通路へ。エレベーターと精算機が並ぶ「↑」サインのある場所です。</p>
+          <img class="step-img" src="images/car_03_elevator_area.jpg" alt="精算機エリア">
+        </div>
+      </div>
+      <!-- STEP END -->
+
+      <!-- STEP START -->
+      <div class="step">
+        <div class="step-left"><div class="step-num">4</div></div>
+        <div class="step-right">
+          <h3 class="step-title">テラス連絡通路の入口へ</h3>
+          <p class="step-desc">青い「Utsunomiya Terrace ↑・←」サインが目印。連絡スロープへ入ります。</p>
+          <img class="step-img" src="images/car_04_slope_entrance.jpg" alt="連絡通路入口">
+        </div>
+      </div>
+      <!-- STEP END -->
+
+      <!-- STEP START -->
+      <div class="step">
+        <div class="step-left"><div class="step-num">5</div></div>
+        <div class="step-right">
+          <h3 class="step-title">スロープ（連絡通路）を進む</h3>
+          <p class="step-desc">鉄柵で囲まれた屋外スロープを進みます。</p>
+          <img class="step-img" src="images/car_05_slope_walking.jpg" alt="スロープ">
+        </div>
+      </div>
+      <!-- STEP END -->
+
+      <!-- STEP START -->
+      <div class="step">
+        <div class="step-left"><div class="step-num">6</div></div>
+        <div class="step-right">
+          <h3 class="step-title">「Utsunomiya Terrace 2F」入口が見える</h3>
+          <p class="step-desc">「Shops &amp; Restaurants ↗」「Hotel ←」の案内が壁に。正面のドアが2F入口です。</p>
+          <img class="step-img" src="images/car_06_2f_sign.jpg" alt="2Fサイン">
+        </div>
+      </div>
+      <!-- STEP END -->
+
+      <!-- STEP START -->
+      <div class="step">
+        <div class="step-left"><div class="step-num">7</div></div>
+        <div class="step-right">
+          <h3 class="step-title">2F ドアをくぐる</h3>
+          <p class="step-desc">「2F」と書かれたガラスの自動ドアへ進みます。</p>
+          <img class="step-img" src="images/car_07_2f_door.jpg" alt="2Fドア">
+        </div>
+      </div>
+      <!-- STEP END -->
+
+      <!-- STEP START -->
+      <div class="step">
+        <div class="step-left"><div class="step-num">8</div></div>
+        <div class="step-right">
+          <h3 class="step-title">2F の廊下を進む</h3>
+          <p class="step-desc">ドアを入ったら廊下を直進。フジドライなどの店舗が並びます。</p>
+          <img class="step-img" src="images/car_08_2f_inside.jpg" alt="2F廊下">
+        </div>
+      </div>
+      <!-- STEP END -->
+
+      <!-- STEP START -->
+      <div class="step">
+        <div class="step-left"><div class="step-num">9</div></div>
+        <div class="step-right">
+          <h3 class="step-title">廊下を奥へ（トイレ付近）</h3>
+          <p class="step-desc">廊下の途中にトイレのサインが見えます。そのまま直進。</p>
+          <img class="step-img" src="images/car_09_corridor.jpg" alt="廊下">
+        </div>
+      </div>
+      <!-- STEP END -->
+
+      <!-- STEP START -->
+      <div class="step">
+        <div class="step-left"><div class="step-num">10</div></div>
+        <div class="step-right">
+          <h3 class="step-title">フジドライ（クリーニング）の前を通過</h3>
+          <p class="step-desc">右手に「フジドライ 洗濯研究所」が見えます。そのまま直進。</p>
+          <img class="step-img" src="images/car_10_fujidry.jpg" alt="フジドライ">
+        </div>
+      </div>
+      <!-- STEP END -->
+
+      <!-- STEP START -->
+      <div class="step">
+        <div class="step-left"><div class="step-num">11</div></div>
+        <div class="step-right">
+          <h3 class="step-title">「エレベーター↑」サインに従う</h3>
+          <p class="step-desc">天井に「エレベーター・エスカレーター ↑」のサインが見えます。そちらへ進みます。</p>
+          <img class="step-img" src="images/car_11_elevator_sign.jpg" alt="エレベーターサイン">
+        </div>
+      </div>
+      <!-- STEP END -->
+
+      <!-- STEP START -->
+      <div class="step">
+        <div class="step-left"><div class="step-num">12</div></div>
+        <div class="step-right">
+          <h3 class="step-title">2F エレベーターホールへ</h3>
+          <p class="step-desc">奥のエレベーターホールへ進みます。エレベーターで <strong>5F</strong> を押します。</p>
+          <img class="step-img" src="images/car_12_elevator_hall.jpg" alt="エレベーターホール">
+        </div>
+      </div>
+      <!-- STEP END -->
+
+      <!-- STEP START -->
+      <div class="step">
+        <div class="step-left"><div class="step-num">13</div></div>
+        <div class="step-right">
+          <h3 class="step-title">5F「レストラン＆ウェディング」で降りる</h3>
+          <p class="step-desc">エレベーター内の案内で5F「レストラン＆ウェディング」が点灯。5Fで降ります。</p>
+          <img class="step-img" src="images/car_13_elevator_inside.jpg" alt="エレベーター内">
+        </div>
+      </div>
+      <!-- STEP END -->
+
+      <!-- STEP START -->
+      <div class="step">
+        <div class="step-left"><div class="step-num">14</div></div>
+        <div class="step-right">
+          <h3 class="step-title">5F 廊下を進む</h3>
+          <p class="step-desc">エレベーターを降りたら廊下を進みます。「Angelo Court Tokyo」の入口が見えます。</p>
+          <img class="step-img" src="images/car_14_corridor_5f.jpg" alt="5F廊下">
+        </div>
+      </div>
+      <!-- STEP END -->
+
+      <!-- STEP START（最後のステップ：色が変わります） -->
+      <div class="step">
+        <div class="step-left"><div class="step-num goal">🎉</div></div>
+        <div class="step-right">
+          <h3 class="step-title goal">Angelo Court Tokyo に到着！</h3>
+          <p class="step-desc">「Angelo Court Tokyo」の看板が目印。こちらが式場入口です。</p>
+          <img class="step-img" src="images/car_15_angelo_arrival.jpg" alt="Angelo Court Tokyo">
+        </div>
+      </div>
+      <!-- STEP END -->
+
+    </div><!-- /steps -->
+  </div><!-- /container -->
+</div><!-- /tab-car -->
+
+<footer>ご不明な点はお気軽にスタッフまでお声がけください</footer>
+
+<script>
+function switchTab(tab, btn) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  btn.classList.add('active');
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+</script>
+
+</body>
+</html>
